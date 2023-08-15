@@ -1,11 +1,14 @@
 package com.jhordan.backend.undertake.backend.controllers;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.jhordan.backend.undertake.backend.models.entities.Product;
 import com.jhordan.backend.undertake.backend.services.ProductService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @CrossOrigin
@@ -44,12 +49,21 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<?> save(@RequestBody Product product) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.save(product));
+    public ResponseEntity<?> save(@Valid @RequestBody Product product, BindingResult result) {
+        if(result.hasErrors()) {
+            return validation(result);
+        } else {
+            return ResponseEntity.status(HttpStatus.CREATED).body(service.save(product));
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Product product) {
+    public ResponseEntity<?> update(@RequestBody Product product, BindingResult result, @PathVariable Long id) {
+
+        if(result.hasErrors()) {
+            return validation(result);
+        }
+
         Optional<Product> optional = service.findById(id);
 
         if (optional.isPresent()) {
@@ -75,5 +89,14 @@ public class ProductController {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    private ResponseEntity<?> validation(BindingResult result) {
+        Map<String, String> errors = new HashMap<>();
+        result.getFieldErrors().forEach( err -> {
+            errors.put(err.getField(), "El campo " + err.getField() + " " + err.getDefaultMessage());
+        });
+
+        return ResponseEntity.badRequest().body(errors);
     }
 }
